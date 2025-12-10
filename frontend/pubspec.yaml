@@ -1,0 +1,26 @@
+name: legal_assistant_frontend
+description: Multilingual AI Legal Assistant (Flutter skeleton)
+version: 0.1.0
+environment:
+  sdk: '>=2.17.0 <3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^0.13.6
+  provider: ^6.0.5
+  file_picker: ^5.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/i18n/
+  # fonts, images, and i18n files live under assets/
