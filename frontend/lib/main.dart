@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'core/services/api_service.dart';
 import 'app/routes/app_routes.dart';
@@ -14,13 +15,27 @@ void main() {
   runApp(const MyApp());
 }
 
+String resolveApiBaseUrl() {
+  const fromDefine = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  if (fromDefine.isNotEmpty) return fromDefine;
+
+  if (kIsWeb) return 'http://localhost:8000';
+
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.android:
+      // Android emulator cannot reach host machine via localhost.
+      return 'http://10.0.2.2:8000';
+    default:
+      return 'http://localhost:8000';
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Configure API base URL here (adjust to your backend)
-    const apiBase = 'http://localhost:8000';
+    final apiBase = resolveApiBaseUrl();
     return Provider<ApiService>(
       create: (_) => ApiService(baseUrl: apiBase),
       child: MaterialApp(
@@ -30,9 +45,9 @@ class MyApp extends StatelessWidget {
         routes: {
           AppRoutes.home: (_) => const HomeScreen(),
           AppRoutes.chat: (_) => const ChatScreen(),
-          AppRoutes.incidentForm: (_) => IncidentFormScreen(onSubmit: (lang, text) async {
-                final api = Provider.of<ApiService>(_, listen: false);
-                await api.generateIncident(lang, text);
+          AppRoutes.incidentForm: (context) => IncidentFormScreen(onSubmit: (lang, text) async {
+                final api = Provider.of<ApiService>(context, listen: false);
+                return api.generateFirDraft(language: lang, text: text);
               }),
           AppRoutes.firResult: (_) => const FirResultScreen(),
           AppRoutes.firAnalyzer: (_) => const FirUploadScreen(),

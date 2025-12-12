@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/routes/app_routes.dart';
 
 class IncidentFormScreen extends StatefulWidget {
-  final Function(String, String) onSubmit;
+  final Future<Map<String, dynamic>> Function(String, String) onSubmit;
   const IncidentFormScreen({Key? key, required this.onSubmit}) : super(key: key);
 
   @override
@@ -18,10 +18,20 @@ class _IncidentFormScreenState extends State<IncidentFormScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     setState(() => _loading = true);
-    await widget.onSubmit(_language, text);
+    final resp = await widget.onSubmit(_language, text);
     if (!mounted) return;
     setState(() => _loading = false);
-    Navigator.pushNamed(context, AppRoutes.firResult);
+    Navigator.pushNamed(
+      context,
+      AppRoutes.firResult,
+      arguments: {
+        'queryText': text,
+        'language': _language,
+        'sourceEndpoint': resp['source_endpoint'] ?? '',
+        'firText': resp['fir_text'] ?? '',
+        'sections': resp['suggested_sections'] ?? const [],
+      },
+    );
   }
 
   @override

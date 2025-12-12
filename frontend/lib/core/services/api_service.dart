@@ -7,11 +7,93 @@ class ApiService {
 
   ApiService({required this.baseUrl});
 
+  Map<String, dynamic> _decodeJson(http.Response resp) {
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return json.decode(resp.body) as Map<String, dynamic>;
+    }
+    throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
+  }
+
   Future<Map<String, dynamic>> generateIncident(String language, String text) async {
     final url = Uri.parse('$baseUrl/incident/generate');
     final resp = await http.post(url,
         headers: {'Content-Type': 'application/json'}, body: json.encode({'language': language, 'text': text}));
-    return json.decode(resp.body) as Map<String, dynamic>;
+    return _decodeJson(resp);
+  }
+
+  Future<Map<String, dynamic>> ragFirDraft({required String language, required String text, int topK = 5}) async {
+    final url = Uri.parse('$baseUrl/rag/fir-draft');
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'language': language, 'text': text, 'top_k': topK}),
+    );
+    return _decodeJson(resp);
+  }
+
+  /// Generates a FIR draft, preferring RAG when available.
+  /// Falls back to `/incident/generate` if RAG is not configured.
+  ///
+  /// Returns a unified shape:
+  /// - `fir_text`: String
+  /// - `suggested_sections`: List<{section_id, title?, confidence?}>
+  /// - `source_endpoint`: String
+  Future<Map<String, dynamic>> generateFirDraft({required String language, required String text, int topK = 5}) async {
+    try {
+      final rag = await ragFirDraft(language: language, text: text, topK: topK);
+      final raw = (rag['suggested_sections'] as List?) ?? const [];
+      final normalized = raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList(growable: false);
+      return {
+        'fir_text': rag['fir_text'] ?? '',
+        'suggested_sections': normalized,
+        'source_endpoint': '/rag/fir-draft',
+      };
+    } catch (_) {
+      final baseline = await generateIncident(language, text);
+      final raw = (baseline['suggested_sections'] as List?) ?? const [];
+      final normalized = raw
+          .map((e) => {
+                'section_id': e.toString(),
+                'title': '',
+                'confidence': null,
+              })
+          .toList(growable: false);
+      return {
+        'fir_text': baseline['fir_text'] ?? '',
+        'suggested_sections': normalized,
+        'source_endpoint': '/incident/generate',
+      };
+    }
+  }
+
+  Future<void> logSectionSelection({
+    required String queryText,
+    required List<String> suggestedSections,
+    required List<String> selectedSectionIds,
+    required String language,
+    required String sourceEndpoint,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final url = Uri.parse('$baseUrl/signals/section-selection');
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'query_text': queryText,
+        'suggested_sections': suggestedSections,
+        'selected_section_ids': selectedSectionIds,
+        'language': language,
+        'source_endpoint': sourceEndpoint,
+        'metadata': metadata ?? {},
+      }),
+    );
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw Exception('Failed to log signal: ${resp.statusCode} ${resp.body}');
+    }
   }
 
   /// Upload a FIR image/PDF and get analysis back.

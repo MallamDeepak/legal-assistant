@@ -2,7 +2,7 @@ name: legal_assistant_frontend
 description: Multilingual AI Legal Assistant (Flutter skeleton)
 version: 0.1.0
 environment:
-  sdk: '>=2.17.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
