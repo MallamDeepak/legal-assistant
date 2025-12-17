@@ -40,6 +40,15 @@ Edit `.env` and set appropriate values. Example contents:
 APP_NAME=legal-assistant
 VECTOR_DB_PATH=./vector_db
 TESSERACT_PATH=C:\Program Files\Tesseract-OCR\tesseract.exe
+
+# RAG (required only if you call /rag/fir-draft)
+OPENAI_API_KEY=sk-...
+# OPENAI_MODEL=gpt-4o-mini
+# OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Optional overrides for FAISS index paths
+# FAISS_INDEX_PATH=./data/faiss_index/legal.faiss
+# FAISS_META_PATH=./data/faiss_index/legal_meta.jsonl
 ```
 
 How to apply `.env` values to your shell session (one of):
@@ -61,7 +70,7 @@ setx VECTOR_DB_PATH "D:\project\legal-assistant-complete\backend\vector_db"
 setx TESSERACT_PATH "C:\Program Files\Tesseract-OCR\tesseract.exe"
 ```
 
-Optional: add `python-dotenv` and auto-load `.env` at startup (I can add this for you if you prefer automatic loading).
+This project auto-loads `backend/.env` at startup using `python-dotenv`.
 
 ## Tesseract OCR (Windows)
 
@@ -117,6 +126,74 @@ If you want to train ML models over legal data, follow these phases:
 7. Evaluate, monitor, and deploy with human-in-the-loop review.
 
 If you want, I can add example scripts for embedding+indexing, NER training starters, or a simple RAG endpoint.
+
+## Convert PDFs into ML-ready data
+
+To turn one or more legal PDFs into a simple corpus you can use for embeddings/RAG or training, use:
+
+```powershell
+cd D:\v4.0\legal-assistant\backend
+. .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# convert specific files
+python .\scripts\pdf_to_corpus.py --pdf "C:\Users\malla\Downloads\it_act_2000_updated.pdf" --pdf "C:\Users\malla\Downloads\iea_1872.pdf" --chunk-tokens 300 --overlap-tokens 50
+
+# or convert all PDFs in a folder
+# python .\scripts\pdf_to_corpus.py --input-dir "C:\Users\malla\Downloads"
+```
+
+This writes:
+- `backend/data/legal_corpus.csv` (includes `section_id,title,text` so it works with `scripts/preload_vector_db.py`)
+- `backend/data/legal_corpus.jsonl` (same data with metadata per chunk)
+- `backend/data/legal_corpus_canonical.jsonl` (canonical ML record format: `id,text,title,source,language` + a few extra metadata fields)
+
+Note: If a PDF is scanned (image-only), `pypdf` may extract little/no text; you'll need an OCR-based pipeline.
+
+## Phase 3 — Embeddings & Vector DB (FAISS)
+
+Install minimal packages (if not already installed via `requirements.txt`):
+
+```powershell
+cd D:\v4.0\legal-assistant\backend
+. .venv\Scripts\Activate.ps1
+pip install sentence-transformers faiss-cpu chromadb
+```
+
+Build a FAISS index (embedding + metadata JSONL):
+
+```powershell
+python .\scripts\build_faiss_index.py --input .\data\legal_corpus_pdfs_canonical.jsonl --out-index .\data\faiss_index\legal.faiss --out-meta .\data\faiss_index\legal_meta.jsonl --model sentence-transformers/all-mpnet-base-v2
+```
+
+Retrieval usage (load index, embed query, search top_k, print metadata):
+
+```powershell
+python .\scripts\query_faiss_index.py --index .\data\faiss_index\legal.faiss --meta .\data\faiss_index\legal_meta.jsonl --model sentence-transformers/all-mpnet-base-v2 --query "someone stole my bike" --top-k 5
+```
+
+## Phase 5 — RAG (Retriever + LLM)
+
+1) Build your FAISS index first (Phase 3).
+
+2) Configure an LLM (OpenAI-compatible):
+
+- `OPENAI_API_KEY` (required)
+- `OPENAI_MODEL` (optional, default: `gpt-4o-mini`)
+- `OPENAI_BASE_URL` (optional, default: `https://api.openai.com/v1`)\
+   Use this if you run a local OpenAI-compatible server.
+
+3) Start the API and call the RAG endpoint:
+
+```powershell
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+```powershell
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/rag/fir-draft' -ContentType 'application/json' -Body '{"language":"en","text":"someone stole my bike from the road","top_k":5}'
+```
+
+The prompt template explicitly delimits retrieved context and asks the model to cite section ids.
 
 ---
 Notes: this README focuses on development and demonstration. For production, add secure API keys, HTTPS, CORS restrictions, authentication, logging, and legal disclaimers.

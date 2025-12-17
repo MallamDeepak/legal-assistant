@@ -37,3 +37,16 @@ def test_contract_review():
     j = r.json()
     assert 'text' in j
     assert 'clauses' in j
+
+
+def test_signal_section_selection():
+    payload = {
+        'query_text': 'someone stole my bike from the road',
+        'suggested_sections': ['IPC 379 - Theft'],
+        'selected_section_ids': ['IPC 379'],
+        'language': 'en',
+        'source_endpoint': '/incident/generate',
+    }
+    r = client.post('/signals/section-selection', json=payload)
+    assert r.status_code == 200
+    assert r.json().get('ok') is True

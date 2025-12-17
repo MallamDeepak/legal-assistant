@@ -35,10 +35,27 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final api = Provider.of<ApiService>(context, listen: false);
     try {
-      final resp = await api.generateIncident('en', text);
-      final sections = (resp['suggested_sections'] as List?)?.join(', ') ?? '';
-      final firText = resp['fir_text'] ?? '';
-      final reply = 'Suggested sections: $sections\n\nFIR:\n$firText';
+      final resp = await api.generateFirDraft(language: 'en', text: text);
+      final firText = (resp['fir_text'] ?? '').toString();
+      final sourceEndpoint = (resp['source_endpoint'] ?? '').toString();
+
+      final rawSections = (resp['suggested_sections'] as List?) ?? const [];
+      final sectionStrings = rawSections.map((e) {
+        if (e is Map) {
+          final map = Map<String, dynamic>.from(e);
+          final id = (map['section_id'] ?? '').toString();
+          final title = (map['title'] ?? '').toString();
+          final conf = map['confidence'];
+          final confStr = conf is num ? conf.toStringAsFixed(2) : '';
+          if (title.isNotEmpty && confStr.isNotEmpty) return '$id — $title (conf $confStr)';
+          if (title.isNotEmpty) return '$id — $title';
+          return id;
+        }
+        return e.toString();
+      }).where((s) => s.trim().isNotEmpty).toList(growable: false);
+
+      final sections = sectionStrings.isEmpty ? '(none)' : sectionStrings.join('\n');
+      final reply = 'Source: $sourceEndpoint\n\nSuggested sections:\n$sections\n\nFIR:\n$firText';
       if (!mounted) return;
       setState(() {
         _messages.insert(0, ChatMessage(text: reply, fromUser: false));
@@ -52,7 +69,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (err.toLowerCase().contains('connection') || err.toLowerCase().contains('refused')) {
         userMessage = 'Cannot reach the backend service at http://localhost:8000.\n\n'
             'Please ensure the backend is running. Start it with:\n'
-            '  cd D:\\project\\legal-assistant-complete\\backend\n'
+            '  cd D:\\v4.0\\legal-assistant\\backend\n'
             '  python -m venv .venv\n'
             '  . .venv\\Scripts\\Activate.ps1\n'
             '  pip install -r requirements.txt\n'
@@ -74,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: ElevatedButton(
         onPressed: onTap,
-        style: ElevatedButton.styleFrom(shape: StadiumBorder(), backgroundColor: Colors.purple[50], foregroundColor: Colors.purple[800], elevation: 2, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+        style: ElevatedButton.styleFrom(shape: const StadiumBorder(), backgroundColor: Colors.purple[50], foregroundColor: Colors.purple[800], elevation: 2, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
         child: Text(label),
       ),
     );
