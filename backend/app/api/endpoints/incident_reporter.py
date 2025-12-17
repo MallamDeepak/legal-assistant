@@ -1,32 +1,51 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
-from app.services import legal_matcher_service, translator_service
+from app.services.legal_matcher_service import LegalMatcherService
+from app.services.report_generator_service import ReportGeneratorService
+from app.services.vector_search_service import VectorSearchService
 
-router = APIRouter()
+router = APIRouter(prefix="/incident", tags=["incident"])
 
 
 class IncidentRequest(BaseModel):
-    language: str
+    language: str = "en"
     text: str
 
 
-class IncidentResponse(BaseModel):
-    suggested_sections: List[str]
-    fir_text: str
+matcher = LegalMatcherService()
+reporter = ReportGeneratorService()
 
 
-@router.post('/generate', response_model=IncidentResponse)
-def generate_fir(req: IncidentRequest):
-    """Generate FIR text and suggested sections.
+@router.post("/analyze")
+async def analyze_incident(req: IncidentRequest):
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="Text required")
+    
+    # Try vector search first, fallback to keyword matcher
+    # Try vector search first, fallback to keyword matcher
+    # Try vector search first, fallback to keyword matcher
+    retrieved = VectorSearchService.search(req.text, top_k=3) or []
+    sections = []
+    
+    # retrieved items are dicts with section_id, title, etc.
+    for p in retrieved:
+        sec_id = p.get("section_id")
+        if sec_id:
+            # Check if already added
+            if not any(s['section_id'] == sec_id for s in sections):
+                sections.append({
+                    'section_id': sec_id, 
+                    'title': p.get('title', 'Relevant Section'),
+                    'text': p.get('text', '')  # Pass full legal text
+                })
 
-    Currently uses translator stub and legal matcher stub.
-    """
-    src_text = req.text
-    if req.language and req.language.lower() != 'en':
-        src_text = translator_service.translate(req.text, target_lang='en')
-
-    suggested_sections = legal_matcher_service.find_relevant_sections(src_text, top_k=5)
-    fir_text = f"Generated FIR (placeholder) for: {req.text}"
-
-    return IncidentResponse(suggested_sections=suggested_sections, fir_text=fir_text)
+    if not sections:
+        # Fallback matcher now returns list of dicts {'section_id':..., 'title':...}
+        sections = matcher.match_sections(req.text) or []
+    
+    fir_text = reporter.generate_fir(req.text, sections)
+    
+    # Return list of section IDs for frontend compatibility, but purely for display list
+    suggested_ids = [s['section_id'] for s in sections]
+    return {"suggested_sections": suggested_ids, "fir_text": fir_text}

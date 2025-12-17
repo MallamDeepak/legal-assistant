@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from app.services import ocr_service, compliance_service
 
-router = APIRouter()
+router = APIRouter(prefix="/contract")
 
 
 class ClauseAnalysis(BaseModel):

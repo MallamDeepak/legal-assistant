@@ -1,0 +1,3 @@
+{"text": "Tenant shall pay rent on time.", "label": "ok"}
+{"text": "Landlord may terminate without notice and keep deposit.", "label": "flagged"}
+{"text": "Service may collect and sell all user data without consent.", "label": "high-risk"}

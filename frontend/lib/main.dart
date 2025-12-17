@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'core/constants.dart';
 import 'core/services/api_service.dart';
 import 'app/routes/app_routes.dart';
 import 'features/incident_reporter/view/incident_form_screen.dart';
@@ -19,10 +20,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Configure API base URL here (adjust to your backend)
-    const apiBase = 'http://localhost:8000';
     return Provider<ApiService>(
-      create: (_) => ApiService(baseUrl: apiBase),
+      create: (_) => ApiService(baseUrl: AppConstants.apiBaseUrl),
       child: MaterialApp(
         title: 'Legal Assistant',
         theme: ThemeData(primarySwatch: Colors.blue),
@@ -30,9 +29,9 @@ class MyApp extends StatelessWidget {
         routes: {
           AppRoutes.home: (_) => const HomeScreen(),
           AppRoutes.chat: (_) => const ChatScreen(),
-          AppRoutes.incidentForm: (_) => IncidentFormScreen(onSubmit: (lang, text) async {
-                final api = Provider.of<ApiService>(_, listen: false);
-                await api.generateIncident(lang, text);
+          AppRoutes.incidentForm: (context) => IncidentFormScreen(onSubmit: (lang, text) async {
+                final api = Provider.of<ApiService>(context, listen: false);
+                return api.generateIncident(lang, text);
               }),
           AppRoutes.firResult: (_) => const FirResultScreen(),
           AppRoutes.firAnalyzer: (_) => const FirUploadScreen(),

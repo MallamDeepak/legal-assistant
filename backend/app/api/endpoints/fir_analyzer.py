@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 from app.services import ocr_service, legal_matcher_service, ner_service
 
-router = APIRouter()
+router = APIRouter(prefix="/fir")
 
 
 class FIRAnalysisResponse(BaseModel):

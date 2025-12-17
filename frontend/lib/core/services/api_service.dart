@@ -7,11 +7,18 @@ class ApiService {
 
   ApiService({required this.baseUrl});
 
+
   Future<Map<String, dynamic>> generateIncident(String language, String text) async {
-    final url = Uri.parse('$baseUrl/incident/generate');
-    final resp = await http.post(url,
-        headers: {'Content-Type': 'application/json'}, body: json.encode({'language': language, 'text': text}));
-    return json.decode(resp.body) as Map<String, dynamic>;
+    final url = Uri.parse('$baseUrl/incident/analyze');
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'language': language, 'text': text}),
+    );
+    if (resp.statusCode == 200) {
+      return json.decode(resp.body) as Map<String, dynamic>;
+    }
+    throw Exception('Incident analyze failed: ${resp.statusCode} ${resp.body}');
   }
 
   /// Upload a FIR image/PDF and get analysis back.

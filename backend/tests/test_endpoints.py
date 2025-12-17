@@ -13,7 +13,7 @@ def test_root():
 
 
 def test_incident_generate():
-    r = client.post('/incident/generate', json={'language': 'en', 'text': 'someone stole my bike from the road'})
+    r = client.post('/incident/analyze', json={'language': 'en', 'text': 'someone stole my bike from the road'})
     assert r.status_code == 200
     j = r.json()
     assert 'suggested_sections' in j

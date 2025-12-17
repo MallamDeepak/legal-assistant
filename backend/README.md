@@ -11,7 +11,8 @@ cd D:\project\legal-assistant-complete\backend
 python -m venv .venv
 . .venv\Scripts\Activate.ps1
 pip install --upgrade pip
-pip install fastapi uvicorn pydantic python-multipart Pillow pytesseract reportlab pytest
+pip install fastapi uvicorn pydantic python-multipart Pillow pytesseract reportlab pytest spacy
+python -m spacy download en_core_web_sm
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -119,16 +120,3 @@ If you want, I can add example scripts for embedding+indexing, NER training star
 
 ---
 Notes: this README focuses on development and demonstration. For production, add secure API keys, HTTPS, CORS restrictions, authentication, logging, and legal disclaimers.
-# Legal Assistant Backend (FastAPI) — Complete Skeleton
-
-This folder contains a complete FastAPI skeleton ready for extension with OCR, NER, semantic matching and PDF generation.
-
-Run locally (dev):
-
-```powershell
-cd D:\project\legal-assistant-complete\backend
-python -m venv .venv
-. .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```

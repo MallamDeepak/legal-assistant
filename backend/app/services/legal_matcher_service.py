@@ -50,5 +50,56 @@ def find_relevant_sections(text: str, top_k: int = 5) -> list:
             out.append(f"{section_id} - {title}")
     # Fallback if nothing matched
     if not out:
-        out = [row.get('section_id', '') for row in corpus[:top_k]]
+        # Don't return random top-k rows as they are irrelevant (e.g. Preamble)
+        return []
     return out
+
+
+"""Keyword matcher as fallback when vector search is unavailable."""
+class LegalMatcherService:
+    def __init__(self):
+        # Minimal keyword map as fallback only
+        self.keyword_map = {
+            'theft': ['IPC 379'],
+            'murder': ['IPC 302'],
+            'assault': ['IPC 323'],
+            'cheating': ['IPC 420'],
+        }
+    
+    def match_sections(self, text: str, top_k: int = 5) -> List[dict]:
+        """Fallback keyword matcher. Vector search should be used first."""
+        if not text:
+            return []
+        
+        text_lower = text.lower()
+        matched = []
+        
+        # Check specific keywords
+        for keyword, sections in self.keyword_map.items():
+            if keyword in text_lower:
+               for sec in sections:
+                   matched.append({'section_id': sec, 'title': f"Offence of {keyword.capitalize()}"})
+
+        # If no strict keyword match, try token overlap with a small subset of corpus or return nothing
+        # (Returning random top-k is confusing for users)
+        if not matched:
+             from app.services.legal_matcher_service import find_relevant_sections
+             # usages of the standalone function which does token overlap
+             raw_matches = find_relevant_sections(text, top_k)
+             for m in raw_matches:
+                 # m is "ID - Title" or just ID
+                 if " - " in m:
+                     sid, title = m.split(" - ", 1)
+                     matched.append({'section_id': sid, 'title': title})
+                 else:
+                     matched.append({'section_id': m, 'title': 'Relevant Section'})
+        
+        # Deduplicate
+        seen = set()
+        unique_matched = []
+        for m in matched:
+            if m['section_id'] not in seen:
+                seen.add(m['section_id'])
+                unique_matched.append(m)
+                
+        return unique_matched[:top_k]
