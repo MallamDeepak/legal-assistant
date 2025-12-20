@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import Optional
+from typing import Optional, List
 
 class OllamaService:
     BASE_URL = "http://localhost:11434/api/generate"
@@ -33,7 +33,22 @@ class OllamaService:
             return None
         except Exception as e:
             print(f"Unexpected error in Ollama service: {e}")
+            print(f"Unexpected error in Ollama service: {e}")
             return None
+
+    @classmethod
+    def expand_legal_query(cls, text: str) -> List[str]:
+        """Generate legal keywords/synonyms for search (e.g. 'bike stolen' -> 'Theft, Property')."""
+        prompt = f"""Identify 3-5 key legal terms or IPC offenses relevant to this incident. Return ONLY a comma-separated list.
+        Incident: "{text}"
+        Keywords:"""
+        
+        resp = cls.generate_text(prompt)
+        if not resp:
+            return []
+        
+        # Cleanup response
+        return [w.strip() for w in resp.split(',') if w.strip()]
 
     @classmethod
     def is_available(cls) -> bool:

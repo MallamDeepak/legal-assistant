@@ -63,7 +63,7 @@ def find_relevant_sections(text: str, top_k: int = 5) -> list:
 
     corpus = _get_corpus_cached()
     if not corpus:
-        return ['IPC 379']
+        return []
 
     tokens = set(_tokenize(text))
     scores = []
@@ -87,42 +87,44 @@ def find_relevant_sections(text: str, top_k: int = 5) -> list:
 """Keyword matcher as fallback when vector search is unavailable."""
 class LegalMatcherService:
     def __init__(self):
-        # Minimal keyword map as fallback only
-        self.keyword_map = {
-            'theft': ['IPC 379'],
-            'murder': ['IPC 302'],
-            'assault': ['IPC 323'],
-            'cheating': ['IPC 420'],
-        }
+        # No hardcoded keywords. Strictly use CSV content.
+        pass
     
     def match_sections(self, text: str, top_k: int = 5) -> List[dict]:
-        """Fallback keyword matcher. Vector search should be used first."""
+        """Fallback matcher using token overlap on CSV data."""
         if not text:
             return []
-        
-        text_lower = text.lower()
         matched = []
         
-        # Check specific keywords
-        for keyword, sections in self.keyword_map.items():
-            if keyword in text_lower:
-               for sec in sections:
-                   matched.append({'section_id': sec, 'title': f"Offence of {keyword.capitalize()}"})
-
-        # If no strict keyword match, try token overlap with a small subset of corpus or return nothing
-        # (Returning random top-k is confusing for users)
-        if not matched:
-             from app.services.legal_matcher_service import find_relevant_sections
-             # usages of the standalone function which does token overlap
-             raw_matches = find_relevant_sections(text, top_k)
-             for m in raw_matches:
-                 # m is "ID - Title" or just ID
-                 if " - " in m:
-                     sid, title = m.split(" - ", 1)
-                     matched.append({'section_id': sid, 'title': title})
-                 else:
-                     matched.append({'section_id': m, 'title': 'Relevant Section'})
+        # Use simple token overlap scan on the CSV corpus
+        from app.services.legal_matcher_service import find_relevant_sections
+        raw_matches = find_relevant_sections(text, top_k)
         
+        for m in raw_matches:
+            # m is "ID - Title" or just ID
+            if " - " in m:
+                sid, title = m.split(" - ", 1)
+                matched.append({'section_id': sid, 'title': title})
+            else:
+                matched.append({'section_id': m, 'title': 'Relevant Section'})
+        
+        # Populate text from Corpus for all matches
+        from app.services.legal_matcher_service import _get_corpus_cached
+        corpus = _get_corpus_cached()
+        # Create a lookup map for speed
+        corpus_map = {row['section_id']: row for row in corpus}
+
+        for m in matched:
+            sid = m['section_id']
+            if sid in corpus_map:
+                row = corpus_map[sid]
+                m['text'] = row.get('text', '')
+                # Update title if it was generic
+                if 'Offence of' in m['title'] or m['title'] == 'Relevant Section':
+                     m['title'] = row.get('title', m['title'])
+            else:
+                m['text'] = ''
+
         # Deduplicate
         seen = set()
         unique_matched = []

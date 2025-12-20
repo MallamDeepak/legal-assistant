@@ -31,7 +31,7 @@ class _FirUploadScreenState extends State<FirUploadScreen> {
     final bytes = file.bytes;
 
     try {
-      final resp = await api.analyzeFIR(file.name, bytes ?? Uint8List(0));
+      final resp = await api.analyzeFIR(file.name, bytes ?? Uint8List(0), 'en');
       if (!mounted) return;
       setState(() => _loading = false);
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => FirAnalysisScreen(

@@ -17,9 +17,11 @@ def create_fir_pdf(data: dict) -> bytes:
 
 
 from app.services.ollama_service import OllamaService
+from app.services.groq_service import GroqService
+from app.services.gemini_service import GeminiService
 
 class ReportGeneratorService:
-    def generate_fir(self, text: str, sections: list) -> str:
+    def generate_fir(self, text: str, sections: list, language: str = "en") -> str:
         """Generate a structured FIR report text (LLM-enhanced)."""
         
         # 1. Prepare context from sections
@@ -30,48 +32,70 @@ class ReportGeneratorService:
             for s in sections:
                 sid = s.get('section_id', 'Unknown')
                 title = s.get('title', '')
-                text = s.get('text', '') # Full legal text
+                full_text = s.get('text', '') # Full legal text
+                # Truncate to avoid huge token usage
+                truncated_text = full_text[:1500] + "..." if len(full_text) > 1500 else full_text
                 # Include full info in context for LLM
-                formatted_sections += f"- SECTION: {sid}\n  TITLE: {title}\n  CONTENT: {text}\n\n"
+                formatted_sections += f"- SECTION: {sid}\n  TITLE: {title}\n  CONTENT: {truncated_text}\n\n"
 
-        # 2. Try LLM Generation
+        # Map language codes to full names for the prompt
+        lang_map = {
+            'en': 'English',
+            'hi': 'Hindi',
+            'bn': 'Bengali',
+            'te': 'Telugu',
+            'mr': 'Marathi'
+        }
+        target_lang = lang_map.get(language, 'English')
+
+        system_prompt = f"You are a helpful and educational Legal Assistant. You must respond in {target_lang}."
+        
+        user_prompt = f"""
+        INCIDENT FACTS:
+        "{text}"
+        
+        POTENTIAL LEGAL SECTIONS (Retrieved from Database):
+        {formatted_sections}
+        
+        YOUR TASK:
+        Explain which legal sections apply to this incident in simple, easy-to-understand language.
+        YOU MUST WRITE THE ENTIRE EXPLANATION IN {target_lang}.
+        
+        1. **Select Relevant Sections**: 
+           - Evaluated the provided 'POTENTIAL LEGAL SECTIONS'. 
+           - **CRITICAL**: If the provided sections are NOT relevant to the crime described (e.g. Theft, Murder, Cheating), you MUST ignore them and identify the correct Indian Penal Code (IPC) sections from your own internal legal knowledge (e.g. IPC 379 for Theft, IPC 302 for Murder).
+        
+        2. **Explain Like I'm Five (ELIF)**: For each section, explain:
+           - **Concept**: What does this law mean? (e.g., "Theft involves dishonestly moving property...")
+           - **Application**: Why does it apply here? Match specific facts to the law's ingredients (e.g., "Moving the ring without consent...").
+           - **Reference**: If an 'Illustration' or 'Explanation' in the provided text matches the incident, cite it.
+        
+        FORMATTING RULES:
+        - Use clear bullet points.
+        - **Do NOT** use complex legal jargon without explaining it.
+        - **IMPORTANT**: If the incident involves **online fraud, OTP theft, or digital personation**, explicitely check for **IT Act Section 66C** (Identity Theft) and **Section 66D** (Cheating by Personation) even if not in the list.
+        - **Do NOT** draft a formal FIR.
+        - **Keep it CONCISE**: Max 2 sentences per section explanation.
+        """
+
+        # 2. Try Groq first (Fast)
+        if GroqService.is_available():
+            groq_resp = GroqService.generate_text(user_prompt, system_prompt=system_prompt)
+            if groq_resp:
+                return groq_resp + "\n\n*(Answered by Legal Assistant)*"
+
+        # 3. Try Gemini (Backup)
+        if GeminiService.is_available():
+            gemini_resp = GeminiService.generate_text(user_prompt, system_prompt=system_prompt)
+            if gemini_resp:
+                return gemini_resp + "\n\n*(Answered by Legal Assistant)*"
+
+        # 3. Try Local LLM (Ollama) as fallback
         if OllamaService.is_available():
-            prompt = f"""You are an expert police officer and India Legal Assistant. Draft a professional First Information Report (FIR) based ONLY on the provided incident and legal sections.
-            
-            INCIDENT:
-            "{text}"
-            
-            LEGAL SECTIONS FOUND (Use these strictly):
-            {formatted_sections}
-            
-            INSTRUCTIONS:
-            1. **STRICT RELEVANCE**: Only use sections that are DIRECTLY applicable to the crime. 
-               - FAIL validation for "Explanation" or "Definition" sections unless the main offense section is also present.
-               - If a section score seems low or irrelevant to the text, IGNORE it.
-            2. **Output Format**:
-               - First Information Report (FIR)
-               - [Body of FIR]
-               - **Offenses Registered**: List strictly the applied sections (e.g., "IPC 379: Punishment for Theft"). *Do not list irrelevant ones.*
-            3. **Speed & Conciseness**: Be professional but concise.
-            4. Do not hallucinate.
-            """
-            
-            llm_response = OllamaService.generate_text(prompt)
+            full_prompt = f"{system_prompt}\n\n{user_prompt}"
+            llm_response = OllamaService.generate_text(full_prompt)
             if llm_response:
-                return llm_response + "\n\n*(Generated by Local AI via Ollama)*"
+                return llm_response
 
-        # 3. Fallback to Template
-        return f"""**FIRST INFORMATION REPORT (DRAFT)**
-
-**1. Incident Summary:**
-{text}
-
-**2. Applicable Legal Sections Identified:**
-{formatted_sections}
-
-**3. Next Steps:**
-- Verify these sections with a legal practitioner.
-- File this FIR at the nearest police station under jurisdiction.
-- Provide any evidence (photos, documents) mentioned in the incident.
-
-*Generated by AI Legal Assistant (Template Mode)*"""
+        # 3. No Fallback allowed
+        return "Error: Legal Analysis could not be generated. Please ensure the AI service is running."

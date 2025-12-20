@@ -9,7 +9,8 @@ import 'features/fir_analyzer/view/fir_upload_screen.dart';
 import 'features/fir_analyzer/view/fir_analysis_screen.dart';
 import 'features/contract_reviewer/view/contract_upload_screen.dart';
 import 'features/contract_reviewer/view/contract_review_screen.dart';
-import 'features/chat/view/chat_screen.dart';
+import 'features/chat/view/chat_screen.dart'; 
+import 'features/landing/view/landing_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,44 +25,98 @@ class MyApp extends StatelessWidget {
       create: (_) => ApiService(baseUrl: AppConstants.apiBaseUrl),
       child: MaterialApp(
         title: 'Legal Assistant',
-        theme: ThemeData(primarySwatch: Colors.blue),
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.teal, 
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: const Color(0xFFF9FAFB), 
+          appBarTheme: const AppBarTheme(
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            backgroundColor: Colors.transparent,
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.teal, width: 1.5)),
+          ),
+          scrollbarTheme: ScrollbarThemeData(
+            thickness: MaterialStateProperty.all(6),
+            radius: const Radius.circular(3),
+            thumbColor: MaterialStateProperty.all(Colors.grey.withOpacity(0.4)),
+            interactive: true,
+          ),
+        ),
         initialRoute: AppRoutes.home,
+        onGenerateRoute: (settings) {
+          // Handle Chat Screen with arguments
+          if (settings.name == AppRoutes.chat) {
+            final args = settings.arguments as ChatTool?;
+            // ChatScreen uses its own Scaffold/Layout, do not wrap with SidebarWrapper as it has internal rail
+            return MaterialPageRoute(
+              builder: (_) => ChatScreen(initialTool: args ?? ChatTool.chat),
+            );
+          }
+          return null;
+        },
         routes: {
-          AppRoutes.home: (_) => const HomeScreen(),
-          AppRoutes.chat: (_) => const ChatScreen(),
-          AppRoutes.incidentForm: (context) => IncidentFormScreen(onSubmit: (lang, text) async {
-                final api = Provider.of<ApiService>(context, listen: false);
-                return api.generateIncident(lang, text);
-              }),
-          AppRoutes.firResult: (_) => const FirResultScreen(),
-          AppRoutes.firAnalyzer: (_) => const FirUploadScreen(),
-          '/fir_analysis': (_) => const FirAnalysisScreen(),
-          AppRoutes.contractReviewer: (_) => const ContractUploadScreen(),
-          '/contract_review': (_) => const ContractReviewScreen(),
+          // Home is now the Splash/Landing Page
+          AppRoutes.home: (_) => const LandingScreen(),
+          
+          // Other features wrapped in Sidebar if needed, or ChatScreen handles them.
+          // Note: IncidentForm, FIRResult etc might be legacy or specific sub-screens. 
+          // If ChatScreen is the main interface, we might not need these as separate top-level routes 
+          // often, but keeping them for now.
+          
+          AppRoutes.incidentForm: (context) => SidebarWrapper(
+                child: IncidentFormScreen(onSubmit: (lang, text) async {
+                  final api = Provider.of<ApiService>(context, listen: false);
+                  return api.generateIncident(lang, text);
+                }),
+              ),
+          AppRoutes.firResult: (_) => const SidebarWrapper(child: FirResultScreen()),
+          AppRoutes.firAnalyzer: (_) => const SidebarWrapper(child: FirUploadScreen()),
+          '/fir_analysis': (_) => const SidebarWrapper(child: FirAnalysisScreen()),
+          AppRoutes.contractReviewer: (_) => const SidebarWrapper(child: ContractUploadScreen()),
+          '/contract_review': (_) => const SidebarWrapper(child: ContractReviewScreen()),
         },
       ),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+// Wrapper for legacy screens that don't have their own scaffold/layout
+class SidebarWrapper extends StatelessWidget {
+  final Widget child;
+  const SidebarWrapper({Key? key, required this.child}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Multilingual Legal Assistant')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(children: [
-          ElevatedButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.chat), child: const Text('Open Chat Assistant')),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.incidentForm), child: const Text('Incident Reporter')),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.firAnalyzer), child: const Text('FIR Analyzer')),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.contractReviewer), child: const Text('Contract Reporter')),
-        ]),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Basic Sidebar for legacy screens
+          Container(
+             width: 72,
+             color: const Color(0xFFF3F4F6),
+             child: Column(
+               children: [
+                 const SizedBox(height: 24),
+                 const Icon(Icons.scale_rounded, size: 32, color: Colors.teal),
+                 const Spacer(),
+                 IconButton(icon: const Icon(Icons.home), onPressed: () => Navigator.pushNamed(context, AppRoutes.home)),
+                 const SizedBox(height: 24),
+               ],
+             ),
+          ),
+          Expanded(child: child),
+        ],
       ),
     );
   }

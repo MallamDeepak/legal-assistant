@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+
 lib64/
 parts/
 sdist/
@@ -50,4 +50,6 @@ android/local.properties
 # Actually, ignoring the large PDFs is safer for Github limit)
 backend/data/raw/
 backend/data/legal_index/
+backend/data/hf_cache/
+backend/data/models/
 backend/data/*.pdf
