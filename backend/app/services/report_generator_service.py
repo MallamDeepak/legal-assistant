@@ -19,6 +19,7 @@ def create_fir_pdf(data: dict) -> bytes:
 from app.services.ollama_service import OllamaService
 from app.services.groq_service import GroqService
 from app.services.gemini_service import GeminiService
+from app.services.redaction_service import RedactionService
 
 class ReportGeneratorService:
     def generate_fir(self, text: str, sections: list, language: str = "en") -> str:
@@ -38,17 +39,19 @@ class ReportGeneratorService:
                 # Include full info in context for LLM
                 formatted_sections += f"- SECTION: {sid}\n  TITLE: {title}\n  CONTENT: {truncated_text}\n\n"
 
-        # Map language codes to full names for the prompt
-        lang_map = {
-            'en': 'English',
-            'hi': 'Hindi',
-            'bn': 'Bengali',
-            'te': 'Telugu',
-            'mr': 'Marathi'
+        # Map language codes to identities
+        lang_config = {
+            'en': {'name': 'English', 'identity': 'Professional Indian Legal Assistant'},
+            'hi': {'name': 'Hindi', 'identity': 'भारतीय कानूनी सहायक (Professional Indian Legal Assistant)'},
+            'bn': {'name': 'Bengali', 'identity': 'ভারতীয় আইনি সহকারী (Professional Indian Legal Assistant)'},
+            'te': {'name': 'Telugu', 'identity': 'భారతీయ న్యాయ సహాయకుడు (Professional Indian Legal Assistant)'},
+            'mr': {'name': 'Marathi', 'identity': 'भारतीय कायदेशीर सहायक (Professional Indian Legal Assistant)'}
         }
-        target_lang = lang_map.get(language, 'English')
+        config = lang_config.get(language, lang_config['en'])
+        target_lang = config['name']
+        identity = config['identity']
 
-        system_prompt = f"You are a helpful and educational Legal Assistant. You must respond in {target_lang}."
+        system_prompt = f"You are a {identity}. You must respond entirely in {target_lang}."
         
         user_prompt = f"""
         INCIDENT FACTS:
@@ -79,23 +82,27 @@ class ReportGeneratorService:
         """
 
         # 2. Try Groq first (Fast)
+        final_text = ""
         if GroqService.is_available():
             groq_resp = GroqService.generate_text(user_prompt, system_prompt=system_prompt)
             if groq_resp:
-                return groq_resp + "\n\n*(Answered by Legal Assistant)*"
+                final_text = groq_resp + "\n\n*(Answered by Legal Assistant)*"
 
         # 3. Try Gemini (Backup)
-        if GeminiService.is_available():
+        elif GeminiService.is_available():
             gemini_resp = GeminiService.generate_text(user_prompt, system_prompt=system_prompt)
             if gemini_resp:
-                return gemini_resp + "\n\n*(Answered by Legal Assistant)*"
+                final_text = gemini_resp + "\n\n*(Answered by Legal Assistant)*"
 
         # 3. Try Local LLM (Ollama) as fallback
-        if OllamaService.is_available():
+        elif OllamaService.is_available():
             full_prompt = f"{system_prompt}\n\n{user_prompt}"
             llm_response = OllamaService.generate_text(full_prompt)
             if llm_response:
-                return llm_response
+                final_text = llm_response
 
-        # 3. No Fallback allowed
-        return "Error: Legal Analysis could not be generated. Please ensure the AI service is running."
+        if not final_text:
+            return "Error: Legal Analysis could not be generated. Please ensure the AI service is running."
+
+        # Apply Redaction before returning
+        return RedactionService.redact_pii(final_text)

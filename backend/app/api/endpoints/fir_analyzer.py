@@ -22,7 +22,7 @@ async def analyze_fir(language: str = "en", file: UploadFile = File(...)):
     if not content:
         raise HTTPException(status_code=400, detail='Empty file uploaded')
 
-    text = ocr_service.extract_text_from_image(content)
+    text = ocr_service.extract_text(content, filename=file.filename)
     sections = legal_matcher_service.find_relevant_sections(text, top_k=5)
     entities = ner_service.extract_entities(text)
 

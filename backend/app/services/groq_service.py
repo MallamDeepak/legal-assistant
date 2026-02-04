@@ -33,7 +33,7 @@ class GroqService:
         }
         
         try:
-            response = requests.post(cls.BASE_URL, headers=headers, json=payload, timeout=10)
+            response = requests.post(cls.BASE_URL, headers=headers, json=payload, timeout=30)
             if response.status_code != 200:
                 print(f"Groq API Error: {response.status_code} {response.text}")
                 return None

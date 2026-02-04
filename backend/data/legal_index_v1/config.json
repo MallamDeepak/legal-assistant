@@ -1,6 +1,0 @@
-{
-  "model": "LaBSE",
-  "dimension": 384,
-  "total_passages": 2052,
-  "index_type": "IndexFlatIP"
-}

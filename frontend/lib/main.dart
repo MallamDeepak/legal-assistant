@@ -11,9 +11,21 @@ import 'features/contract_reviewer/view/contract_upload_screen.dart';
 import 'features/contract_reviewer/view/contract_review_screen.dart';
 import 'features/chat/view/chat_screen.dart'; 
 import 'features/landing/view/landing_screen.dart';
+import 'core/providers/language_provider.dart';
+import 'core/widgets/futuristic_widgets.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<ApiService>(
+          create: (_) => ApiService(baseUrl: AppConstants.apiBaseUrl),
+        ),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -21,35 +33,47 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Provider<ApiService>(
-      create: (_) => ApiService(baseUrl: AppConstants.apiBaseUrl),
-      child: MaterialApp(
-        title: 'Legal Assistant',
+    return MaterialApp(
+        title: 'NYAYA: AI Legal Assistant',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
+          brightness: Brightness.light,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.teal, 
+            seedColor: const Color(0xFFA68A64), // Light Brown/Tan
             brightness: Brightness.light,
+            primary: const Color(0xFFA68A64),
+            surface: Colors.white,
+            background: Colors.white,
+            onBackground: Colors.black,
+            onSurface: Colors.black87,
           ),
-          scaffoldBackgroundColor: const Color(0xFFF9FAFB), 
+          scaffoldBackgroundColor: Colors.white, 
           appBarTheme: const AppBarTheme(
             elevation: 0,
             scrolledUnderElevation: 0,
             backgroundColor: Colors.transparent,
+            centerTitle: true,
+            iconTheme: IconThemeData(color: Colors.black87),
+            titleTextStyle: TextStyle(color: Colors.black87, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.teal, width: 1.5)),
+            fillColor: const Color(0xFFF1F5F9), // Slate 100
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.black.withOpacity(0.05))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFA68A64), width: 1.5)),
+            hintStyle: TextStyle(color: Colors.black.withOpacity(0.3)),
           ),
           scrollbarTheme: ScrollbarThemeData(
             thickness: MaterialStateProperty.all(6),
             radius: const Radius.circular(3),
-            thumbColor: MaterialStateProperty.all(Colors.grey.withOpacity(0.4)),
+            thumbColor: MaterialStateProperty.all(const Color(0xFFA68A64).withOpacity(0.2)),
             interactive: true,
+          ),
+          textTheme: const TextTheme(
+            bodyLarge: TextStyle(color: Colors.black87),
+            bodyMedium: TextStyle(color: Colors.black87),
           ),
         ),
         initialRoute: AppRoutes.home,
@@ -85,8 +109,7 @@ class MyApp extends StatelessWidget {
           AppRoutes.contractReviewer: (_) => const SidebarWrapper(child: ContractUploadScreen()),
           '/contract_review': (_) => const SidebarWrapper(child: ContractReviewScreen()),
         },
-      ),
-    );
+      );
   }
 }
 
@@ -97,25 +120,44 @@ class SidebarWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Scaffold(
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Stack(
         children: [
-          // Basic Sidebar for legacy screens
-          Container(
-             width: 72,
-             color: const Color(0xFFF3F4F6),
-             child: Column(
-               children: [
-                 const SizedBox(height: 24),
-                 const Icon(Icons.scale_rounded, size: 32, color: Colors.teal),
-                 const Spacer(),
-                 IconButton(icon: const Icon(Icons.home), onPressed: () => Navigator.pushNamed(context, AppRoutes.home)),
-                 const SizedBox(height: 24),
-               ],
-             ),
+          // Background spray removed
+          
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Basic Glass Sidebar for legacy screens
+              SizedBox(
+                width: 72,
+                child: GlassCard(
+                  padding: EdgeInsets.zero,
+                  borderRadius: BorderRadius.zero,
+                  borderColor: isLight ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.05),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      const Icon(Icons.balance, size: 28, color: Color(0xFFA68A64)),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(Icons.home_rounded, color: isLight ? Colors.black54 : Colors.white70), 
+                        onPressed: () => Navigator.pushNamed(context, AppRoutes.home)
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  color: Colors.transparent,
+                  child: child,
+                ),
+              ),
+            ],
           ),
-          Expanded(child: child),
         ],
       ),
     );

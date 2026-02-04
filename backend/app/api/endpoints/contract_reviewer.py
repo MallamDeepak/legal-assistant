@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
-from typing import List
-from app.services import ocr_service, compliance_service
+from typing import List, Dict, Any
+from app.services import ocr_service, compliance_service, ner_service
 from app.services.language_detector_service import LanguageDetectorService
 
 router = APIRouter(prefix="/contract")
@@ -13,8 +13,9 @@ class ClauseAnalysis(BaseModel):
 
 
 class ContractAnalysisResponse(BaseModel):
-    text: str
+    extracted_text: str
     clauses: List[ClauseAnalysis]
+    entities: Dict[str, Any] = {}
     summary: str = ""
 
 
@@ -26,10 +27,11 @@ async def review_contract(language: str = "en", file: UploadFile = File(...)):
     if not content:
         raise HTTPException(status_code=400, detail='Empty file uploaded')
 
-    text = ocr_service.extract_text_from_image(content)
+    text = ocr_service.extract_text(content, filename=file.filename)
 
     clauses_out = compliance_service.analyze_clauses(text)
     clauses = [ClauseAnalysis(**c) for c in clauses_out]
+    entities = ner_service.extract_entities(text)
 
     # Add LLM Summary in target language
     from app.services.gemini_service import GeminiService
@@ -57,7 +59,8 @@ async def review_contract(language: str = "en", file: UploadFile = File(...)):
         summary = GeminiService.generate_text(prompt, system_prompt=f"You are a helpful legal assistant named Legal Assistant. Respond in {target_lang}.")
 
     return ContractAnalysisResponse(
-        text=text, 
+        extracted_text=text, 
         clauses=clauses,
+        entities=entities,
         summary=summary or "Analysis summary not available."
     )

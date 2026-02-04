@@ -17,15 +17,17 @@ def _generate_answer_internal(query: str, language: str, cache_key: str = None) 
     if not docs:
         return "I could not find any specific legal sections related to your query in the database. However, I can help with general legal information about India."
 
-    # Map language codes to full names for the prompt
-    lang_map = {
-        'en': 'English',
-        'hi': 'Hindi',
-        'bn': 'Bengali',
-        'te': 'Telugu',
-        'mr': 'Marathi'
+    # Map language codes to identities and instructions
+    lang_config = {
+        'en': {'name': 'English', 'identity': 'Professional Indian Legal Assistant'},
+        'hi': {'name': 'Hindi', 'identity': 'भारतीय कानूनी सहायक (Professional Indian Legal Assistant)'},
+        'bn': {'name': 'Bengali', 'identity': 'ভারতীয় আইনি সহকারী (Professional Indian Legal Assistant)'},
+        'te': {'name': 'Telugu', 'identity': 'భారతీయ న్యాయ సహాయకుడు (Professional Indian Legal Assistant)'},
+        'mr': {'name': 'Marathi', 'identity': 'भारतीय कायदेशीर सहायक (Professional Indian Legal Assistant)'}
     }
-    target_lang = lang_map.get(language, 'English')
+    config = lang_config.get(language, lang_config['en'])
+    target_lang = config['name']
+    identity = config['identity']
 
     # Prepare Context (Denser context for speed)
     context = ""
@@ -35,17 +37,18 @@ def _generate_answer_internal(query: str, language: str, cache_key: str = None) 
         truncated_text = full_text[:1000] + "..." if len(full_text) > 1000 else full_text
         context += f"Source {i}: {truncated_text}\n\n"
             
-    system_prompt = f"""You are a helpful and professional Indian Legal Assistant. 
+    system_prompt = f"""You are a {identity}.
     
     Your goal is to provide accurate, educational, and helpful answers in {target_lang}.
     
     Instructions:
-    1. **Comprehensiveness**: Use the provided 'Legal Context' to answer the User's Question. If the context contains multiple relevant sections (e.g., from IPC, CrPC, or IT Act), summarize them clearly.
-    2. **Handling Knowledge Gaps**: If the context doesn't have the exact answer but is related, provide a general explanation of the law based on your internal knowledge while acknowledging it's a general overview.
-    3. **IT Act**: Pay special attention to the Information Technology (IT) Act if the question involves digital crimes, fraud, or electronic records.
-    4. **Formatting**: Use Markdown for clarity (bolding, bullet points).
-    5. **Directness**: Be direct but polite. Do not use filler phrases.
-    6. **Language**: YOU MUST PROVIDE THE ENTIRE RESPONSE IN {target_lang}.
+    1. **Language Precision**: YOU MUST PROVIDE THE ENTIRE RESPONSE IN {target_lang}. Use clear, professional, yet accessible language appropriate for {target_lang} speakers.
+    2. **Comprehensiveness**: Use the provided 'Legal Context' to answer the User's Question. If the context contains multiple relevant sections (e.g., from IPC, CrPC, or IT Act), summarize them clearly.
+    3. **Legal Terminology**: If a specific legal term in {target_lang} is common but might be confusing, briefly explain it.
+    4. **Handling Knowledge Gaps**: If the context doesn't have the exact answer but is related, provide a general explanation of the law based on your internal knowledge while acknowledging it's a general overview.
+    5. **IT Act**: Pay special attention to the Information Technology (IT) Act if the question involves digital crimes, fraud, or electronic records.
+    6. **Formatting**: Use Markdown for clarity (bolding, bullet points).
+    7. **Directness**: Be direct but polite. Do not use filler phrases.
     """
     
     user_prompt = f"""

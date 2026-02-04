@@ -4,7 +4,7 @@ from typing import Optional
 
 class GeminiService:
     API_KEY = "AIzaSyA6G42MyK5ZDC4lEYI0jVL9KyrEwnLkz0c"
-    BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    BASE_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
 
     @classmethod
     def generate_text(cls, prompt: str, system_prompt: str = None) -> Optional[str]:
