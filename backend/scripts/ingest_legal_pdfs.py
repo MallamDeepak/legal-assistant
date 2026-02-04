@@ -7,7 +7,7 @@ from pathlib import Path
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / "data"
-CORPUS_PATH = BASE_DIR / "data" / "legal_corpus.csv"
+CORPUS_PATH = BASE_DIR / "data" / "legal_corpus_pdfs.csv"
 
 def extract_text_from_pdf(pdf_path):
     print(f"Processing {pdf_path.name}...")
@@ -38,8 +38,9 @@ def parse_sections(text, source_name="Unknown"):
     # Common India Code format: "1. Short title..." or "Section 302. Punishment..."
     # We will try a generic splitter.
     
-    # Simple split by "Section \d+"
-    parts = re.split(r'(Section\s+\d+\.|[A-Z][a-z]+\s+\d+\.)', text)
+    # Improved split: "Section 302" OR "302." at start of line
+    # Matches: \n + (Section + space + digits + dot) OR \n + (digits + dot + space)
+    parts = re.split(r'(\n\s*Section\s+\d+\.|\n\s*\d+\.\s+)', text)
     
     sections = []
     current_title = "Preamble"
@@ -124,14 +125,10 @@ def main():
         print("No sections extracted.")
         return
 
-    # Append to corpus
-    file_exists = CORPUS_PATH.exists()
-    
-    with open(CORPUS_PATH, 'a', newline='', encoding='utf-8') as f:
+    # Overwrite (Replace Init)
+    with open(CORPUS_PATH, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['section_id', 'title', 'text', 'source', 'language'])
-        if not file_exists:
-            writer.writeheader()
-        
+        writer.writeheader()
         writer.writerows(all_rows)
         
     print(f"✓ Successfully appended {len(all_rows)} sections to {CORPUS_PATH}")

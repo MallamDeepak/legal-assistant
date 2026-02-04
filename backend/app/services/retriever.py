@@ -26,7 +26,8 @@ class Retriever:
         """Retrieve top_k most relevant passages."""
         # Normalize query for Cosine Similarity
         query_embedding = self.model.encode([query], normalize_embeddings=True)[0].reshape(1, -1).astype('float32')
-        distances, indices = self.index.search(query_embedding, top_k * 3)  # overfetch then dedupe
+        # Fetch significantly more candidates for robust reranking (e.g. 100 candidates for top_k=5)
+        distances, indices = self.index.search(query_embedding, top_k * 20) 
 
         best = {}
         for idx, dist in zip(indices[0], distances[0]):
@@ -43,5 +44,5 @@ class Retriever:
                 item["score"] = score
                 best[sec_id] = item
 
-        # sort by score desc and trim
-        return sorted(best.values(), key=lambda x: x["score"], reverse=True)[:top_k]
+        # sort by score desc and then by passage_id for stable tie-breaking
+        return sorted(best.values(), key=lambda x: (x["score"], -x.get("passage_id", 0)), reverse=True)[:top_k]

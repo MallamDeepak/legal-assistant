@@ -2,16 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
+.env
+.venv
+env/
+venv/
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -21,33 +21,50 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual Env
-venv/
-.venv/
-env/
-ENV/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# VS Code
-.vscode/
-
 # Flutter/Dart
 .dart_tool/
 .packages
+.pub-cache/
 .pub/
 build/
-ios/Flutter/App.framework
-ios/Flutter/Flutter.framework
-android/local.properties
+linux/flutter/ephemeral/
+macos/flutter/ephemeral/
+windows/flutter/ephemeral/
+.flutter-plugins
+.flutter-plugins-dependencies
+.project
+.settings/
+.classpath
+.factorypath
 
-# Environment variables
-.env
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Local Data (exclude large PDFs and Index if preferred, but user might want them. 
-# Excluding Raw Large PDFs but keeping CSV and samples for now. 
-# Actually, ignoring the large PDFs is safer for Github limit)
-backend/data/raw/
-backend/data/legal_index/
-backend/data/*.pdf
+# Misc
+.DS_Store
+*.log
+node_modules/
+backend/data/
+backend/.venv/
+.venv/
+node_modules/
+backend/app/api/endpoints/__pycache__/
+backend/app/services/__pycache__/
+frontend/.dart_tool/
+frontend/build/
+*.pyd
+*.so
+*.dll
+*.exe
+*.bin
+*.pt
+*.pth
+*.h5
+*.tflite
+*.onnx
+*.safetensors
+*.out.tfevents.*
