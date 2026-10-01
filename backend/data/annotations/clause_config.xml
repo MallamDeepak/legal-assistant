@@ -1,0 +1,17 @@
+<View>
+  <Text name="text" value="$text"/>
+  <Choices name="risk_level" toName="text" choice="single-radio">
+    <Choice value="ok"/>
+    <Choice value="flagged"/>
+    <Choice value="high-risk"/>
+  </Choices>
+  <Choices name="clause_type" toName="text" choice="multiple">
+    <Choice value="liability"/>
+    <Choice value="payment"/>
+    <Choice value="termination"/>
+    <Choice value="confidentiality"/>
+    <Choice value="data_collection"/>
+    <Choice value="dispute_resolution"/>
+  </Choices>
+  <TextArea name="notes" toName="text" placeholder="Notes about this clause..."/>
+</View>

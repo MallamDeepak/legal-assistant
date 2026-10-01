@@ -1,0 +1,13 @@
+<View>
+  <Text name="text" value="$text"/>
+  <Labels name="label" toName="text">
+    <Label value="PER" background="red"/>
+    <Label value="LOC" background="blue"/>
+    <Label value="ORG" background="green"/>
+    <Label value="DATE" background="yellow"/>
+    <Label value="SECTION" background="purple"/>
+    <Label value="COURT" background="orange"/>
+    <Label value="JUDGE" background="pink"/>
+    <Label value="CASE_NUMBER" background="brown"/>
+  </Labels>
+</View>
